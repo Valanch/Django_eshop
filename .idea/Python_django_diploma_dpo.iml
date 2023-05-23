@@ -12,7 +12,7 @@
     <option name="TEMPLATE_CONFIGURATION" value="Jinja2" />
     <option name="TEMPLATE_FOLDERS">
       <list>
-        <option value="$MODULE_DIR$/diploma-frontend/frontend/templates" />
+        <option value="$MODULE_DIR$/mysite/frontend/templates" />
       </list>
     </option>
   </component>
