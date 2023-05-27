@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 
 from accounts.models import Profile
+from shopapp.models import Category, Product
 
 User = get_user_model()
 
@@ -39,26 +40,14 @@ def banners(request):
 
 
 def categories(request):
-    data = [
-        {
-            "id": 123,
-            "title": "video card",
-            "image": {
-                "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                "alt": "Image alt string"
-            },
-            "subcategories": [
-                {
-                    "id": 123,
-                    "title": "video card",
-                    "image": {
-                        "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                        "alt": "Image alt string"
-                    }
-                }
-            ]
-        }
-    ]
+    data = list(Category.objects.values("id", "title", "image"))
+    for dictionary in data:
+        # dictionary["image"] = {
+        #                 "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
+        #                 "alt": "Image alt string"
+        #             }
+        dictionary["subcategories"] = []
+
     return JsonResponse(data, safe=False)
 
 
@@ -365,46 +354,49 @@ def signOut(request):
 
 
 def product(request, id):
-    data = {
-        "id": 123,
-        "category": 55,
-        "price": 500.67,
-        "count": 12,
-        "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-        "title": "video card",
-        "description": "description of the product",
-        "fullDescription": "full description of the product",
-        "freeDelivery": True,
-        "images": [
-            {
-                "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                "alt": "hello alt",
-            }
-        ],
-        "tags": [
-            {
-                "id": 0,
-                "name": "Hello world"
-            }
-        ],
-        "reviews": [
-            {
-                "author": "Annoying Orange",
-                "email": "no-reply@mail.ru",
-                "text": "rewrewrwerewrwerwerewrwerwer",
-                "rate": 4,
-                "date": "2023-05-05 12:12"
-            }
-        ],
-        "specifications": [
-            {
-                "name": "Size",
-                "value": "XL"
-            }
-        ],
-        "rating": 4.6
-    }
-    return JsonResponse(data)
+    if request.method == "GET":
+        data = Product.objects.filter(id=id)
+        print(data)
+        data = {
+            "id": 1,
+            "category": 55,
+            "price": 500.67,
+            "count": 12,
+            "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
+            "title": "video card",
+            "description": "description of the product",
+            "fullDescription": "full description of the product",
+            "freeDelivery": True,
+            "images": [
+                {
+                    "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
+                    "alt": "hello alt",
+                }
+            ],
+            "tags": [
+                {
+                    "id": 0,
+                    "name": "Hello world"
+                }
+            ],
+            "reviews": [
+                {
+                    "author": "Annoying Orange",
+                    "email": "no-reply@mail.ru",
+                    "text": "rewrewrwerewrwerwerewrwerwer",
+                    "rate": 4,
+                    "date": "2023-05-05 12:12"
+                }
+            ],
+            "specifications": [
+                {
+                    "name": "Size",
+                    "value": "XL"
+                }
+            ],
+            "rating": 4.6
+        }
+        return JsonResponse(data)
 
 
 def tags(request):
