@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_filters',
     'frontend',
     'shopapp',
     'accounts',
@@ -121,6 +122,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "uploads"
 
 # Default primary key field type

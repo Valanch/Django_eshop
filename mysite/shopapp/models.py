@@ -28,3 +28,35 @@ class Product(models.Model):
     description = models.TextField(default="")
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     stock = models.IntegerField(default=0)
+
+    def serialize(self):
+        if self.image:
+            return {
+                "id": self.pk,
+                "category": self.category.pk,
+                "description": self.description,
+                "price": self.price,
+                "count": self.stock,
+                "title": self.name,
+                "images": [
+                {
+                    "src": self.image.url,
+                    "alt": "hello alt",
+                }
+            ]
+            }
+        else:
+            return {
+                "id": self.pk,
+                "category": self.category.pk,
+                "description": self.description,
+                "price": self.price,
+                "count": self.stock,
+                "title": self.name,
+                "images": [
+                {
+                    "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
+                    "alt": "hello alt",
+                }
+            ]
+            }

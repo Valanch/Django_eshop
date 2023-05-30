@@ -5,37 +5,20 @@ import json
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
+from django.core.paginator import Paginator
 
 from accounts.models import Profile
+from shopapp.filters import ProductFilter
 from shopapp.models import Category, Product
+# from shopapp.serializers import ProductSerializer
 
 User = get_user_model()
 
 
 def banners(request):
-    data = [
-        {
-            "id": "123",
-            "category": 55,
-            "price": 500.67,
-            "count": 12,
-            "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-            "title": "video card",
-            "description": "description of the product",
-            "freeDelivery": True,
-            "images": [
-                {
-                    "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                    "alt": "any alt text",
-                }
-            ],
-            "tags": [
-                "string"
-            ],
-            "reviews": 5,
-            "rating": 4.6
-        },
-    ]
+    current_product = Product.objects.get(pk=3)
+    data = [current_product.serialize()]
+    print(data)
     return JsonResponse(data, safe=False)
 
 
@@ -52,35 +35,29 @@ def categories(request):
 
 
 def catalog(request):
+    all_products = Product.objects.all()
+    # filterset = ProductFilter(request.GET, queryset=all_products)
+    # print(filterset.qs)
+    # print(request.GET)
+    # if filterset.is_valid():
+    #     all_products = filterset.qs
+    if request.GET.get("filter[minPrice]"):
+        all_products = all_products.filter(price__range=(request.GET.get("filter[minPrice]"), request.GET.get("filter[maxPrice]")))
+    if request.GET.get("filter[name]"):
+        all_products = all_products.filter(name__contains=request.GET.get("filter[name]"))
+    if request.GET.get("sort"):
+        all_products = all_products.order_by(request.GET.get("sort"))
+    if request.GET.get("sortType") == "dec":
+        all_products = all_products.order_by("-" + request.GET.get("sort"))
+    products = [every_product.serialize() for every_product in list(all_products)]
+    print(products)
+
+    pages = Paginator(products, 2)
+    current_page = request.GET.get("currentPage")
     data = {
-        "items": [
-            {
-                "id": 123,
-                "category": 123,
-                "price": 500.67,
-                "count": 12,
-                "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-                "title": "video card",
-                "description": "description of the product",
-                "freeDelivery": True,
-                "images": [
-                    {
-                        "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                        "alt": "hello alt",
-                    }
-                ],
-                "tags": [
-                    {
-                        "id": 0,
-                        "name": "Hello world"
-                    }
-                ],
-                "reviews": 5,
-                "rating": 4.6
-            }
-        ],
-        "currentPage": randrange(1, 4),
-        "lastPage": 3
+        "items": pages.page(current_page).object_list,
+        "currentPage": current_page,
+        "lastPage": pages.num_pages
     }
     return JsonResponse(data)
 
@@ -170,7 +147,7 @@ def sales(request):
 
 
 def basket(request):
-    if (request.method == "GET"):
+    if request.method == "GET":
         print('[GET] /api/basket/')
         data = [
             {
@@ -354,49 +331,56 @@ def signOut(request):
 
 
 def product(request, id):
-    if request.method == "GET":
-        data = Product.objects.filter(id=id)
-        print(data)
-        data = {
-            "id": 1,
-            "category": 55,
-            "price": 500.67,
-            "count": 12,
-            "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-            "title": "video card",
-            "description": "description of the product",
-            "fullDescription": "full description of the product",
-            "freeDelivery": True,
-            "images": [
-                {
-                    "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                    "alt": "hello alt",
-                }
-            ],
-            "tags": [
-                {
-                    "id": 0,
-                    "name": "Hello world"
-                }
-            ],
-            "reviews": [
-                {
-                    "author": "Annoying Orange",
-                    "email": "no-reply@mail.ru",
-                    "text": "rewrewrwerewrwerwerewrwerwer",
-                    "rate": 4,
-                    "date": "2023-05-05 12:12"
-                }
-            ],
-            "specifications": [
-                {
-                    "name": "Size",
-                    "value": "XL"
-                }
-            ],
-            "rating": 4.6
-        }
-        return JsonResponse(data)
+    current_product = Product.objects.get(pk=id)
+    data = current_product.serialize()
+    print(data)
+    # test = ProductSerializer(current_product)
+    # test_data = test.data
+    # print(test_data)
+    # data["category"] = data["category_id"]
+    # data["count"] = data["stock"]
+    # data["title"] = data["name"]
+    # data["images"] = []
+    # data = {
+    #     "id": 123,
+    #     "category": 55,
+    #     "price": 500.67,
+    #     "count": 12,
+    #     "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
+    #     "title": "video card",
+    #     "description": "description of the product",
+    #     "fullDescription": "full description of the product",
+    #     "freeDelivery": True,
+    #     "images": [
+    #         {
+    #             "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
+    #             "alt": "hello alt",
+    #         }
+    #     ],
+    #     "tags": [
+    #         {
+    #             "id": 0,
+    #             "name": "Hello world"
+    #         }
+    #     ],
+    #     "reviews": [
+    #         {
+    #             "author": "Annoying Orange",
+    #             "email": "no-reply@mail.ru",
+    #             "text": "rewrewrwerewrwerwerewrwerwer",
+    #             "rate": 4,
+    #             "date": "2023-05-05 12:12"
+    #         }
+    #     ],
+    #     "specifications": [
+    #         {
+    #             "name": "Size",
+    #             "value": "XL"
+    #         }
+    #     ],
+    #     "rating": 4.6
+    # }
+    return JsonResponse(data, safe=False)
 
 
 def tags(request):
@@ -618,3 +602,4 @@ def avatar(request):
     if request.method == "POST":
         # 		print(request.FILES["avatar"])
         return HttpResponse(status=200)
+
