@@ -9,7 +9,8 @@ from django.core.paginator import Paginator
 
 from accounts.models import Profile
 from shopapp.filters import ProductFilter
-from shopapp.models import Category, Product
+from shopapp.models import Category, Product, Review, Cart, CartItem, Order
+
 # from shopapp.serializers import ProductSerializer
 
 User = get_user_model()
@@ -52,7 +53,7 @@ def catalog(request):
     products = [every_product.serialize() for every_product in list(all_products)]
     print(products)
 
-    pages = Paginator(products, 2)
+    pages = Paginator(products, request.GET.get("limit"))
     current_page = request.GET.get("currentPage")
     data = {
         "items": pages.page(current_page).object_list,
@@ -63,62 +64,22 @@ def catalog(request):
 
 
 def productsPopular(request):
-    data = [
-        {
-            "id": "123",
-            "category": 55,
-            "price": 500.67,
-            "count": 12,
-            "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-            "title": "video card",
-            "description": "description of the product",
-            "freeDelivery": True,
-            "images": [
-                {
-                    "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                    "alt": "hello alt",
-                }
-            ],
-            "tags": [
-                {
-                    "id": 0,
-                    "name": "Hello world"
-                }
-            ],
-            "reviews": 5,
-            "rating": 4.6
-        }
-    ]
+    products = list(Product.objects.all())
+    data = [product.serialize() for product in products if product.get_rating()]
+
+    # for each_product in products:
+    #     if each_product.get_rating():
+    #         rating_data[each_product.pk] = len(each_product.get_reviews())
+    # sorted_rating = sorted(rating_data.items(), key=lambda x: x[1], reverse=True)
+    # id_list = [sorted_rating[0][0], sorted_rating[1][0], sorted_rating[2][0]]
+    # print(id_list)
+
     return JsonResponse(data, safe=False)
 
 
 def productsLimited(request):
-    data = [
-        {
-            "id": "123",
-            "category": 55,
-            "price": 500.67,
-            "count": 12,
-            "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-            "title": "video card",
-            "description": "description of the product",
-            "freeDelivery": True,
-            "images": [
-                {
-                    "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                    "alt": "hello alt",
-                }
-            ],
-            "tags": [
-                {
-                    "id": 0,
-                    "name": "Hello world"
-                }
-            ],
-            "reviews": 5,
-            "rating": 4.6
-        }
-    ]
+    products = list(Product.objects.all())
+    data = [product.serialize() for product in products if product.price > 5000]
     return JsonResponse(data, safe=False)
 
 
@@ -149,153 +110,88 @@ def sales(request):
 def basket(request):
     if request.method == "GET":
         print('[GET] /api/basket/')
-        data = [
-            {
-                "id": 123,
-                "category": 55,
-                "price": 500.67,
-                "count": 12,
-                "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-                "title": "video card",
-                "description": "description of the product",
-                "freeDelivery": True,
-                "images": [
-                    {
-                        "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                        "alt": "hello alt",
-                    }
-                ],
-                "tags": [
-                    {
-                        "id": 0,
-                        "name": "Hello world"
-                    }
-                ],
-                "reviews": 5,
-                "rating": 4.6
-            },
-            {
-                "id": 124,
-                "category": 55,
-                "price": 201.675,
-                "count": 5,
-                "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-                "title": "video card",
-                "description": "description of the product",
-                "freeDelivery": True,
-                "images": [
-                    {
-                        "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                        "alt": "hello alt",
-                    }
-                ],
-                "tags": [
-                    {
-                        "id": 0,
-                        "name": "Hello world"
-                    }
-                ],
-                "reviews": 5,
-                "rating": 4.6
-            }
-        ]
+        if request.user.is_authenticated:
+            cart = Cart.objects.get_or_create(user=request.user)
+        else:
+            cart = Cart.objects.get_or_create(session_key=request.session.session_key)
+        data = cart[0].serialize()
+
         return JsonResponse(data, safe=False)
 
     elif (request.method == "POST"):
         body = json.loads(request.body)
         id = body['id']
         count = body['count']
+        if request.user.is_authenticated:
+            cart = Cart.objects.get_or_create(user=request.user)
+            if cart[0].products.filter(product_id=id).exists():
+                product_in_cart = cart[0].products.get(product_id=id)
+                product_in_cart.count += int(count)
+                product_in_cart.save()
+            else:
+                cart[0].products.add(CartItem.objects.create(user=request.user, product_id=id, count=count))
+            data = cart[0].serialize()
+        else:
+            cart = Cart.objects.get_or_create(session_key=request.session.session_key)
+            if cart[0].products.filter(product_id=id).exists():
+                product_in_cart = cart[0].products.get(product_id=id)
+                product_in_cart.count += int(count)
+                product_in_cart.save()
+            else:
+                cart[0].products.add(CartItem.objects.create(user=None, product_id=id, count=count))
+            data = cart[0].serialize()
+
         print('[POST] /api/basket/   |   id: {id}, count: {count}'.format(id=id, count=count))
-        data = [
-            {
-                "id": id,
-                "category": 55,
-                "price": 500.67,
-                "count": 13,
-                "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-                "title": "video card",
-                "description": "description of the product",
-                "freeDelivery": True,
-                "images": [
-                    {
-                        "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                        "alt": "hello alt",
-                    }
-                ],
-                "tags": [
-                    {
-                        "id": 0,
-                        "name": "Hello world"
-                    }
-                ],
-                "reviews": 5,
-                "rating": 4.6
-            }
-        ]
+
         return JsonResponse(data, safe=False)
 
     elif (request.method == "DELETE"):
         body = json.loads(request.body)
         id = body['id']
         print('[DELETE] /api/basket/')
-        data = [
-            {
-                "id": id,
-                "category": 55,
-                "price": 500.67,
-                "count": 11,
-                "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-                "title": "video card",
-                "description": "description of the product",
-                "freeDelivery": True,
-                "images": [
-                    {
-                        "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                        "alt": "hello alt",
-                    }
-                ],
-                "tags": [
-                    {
-                        "id": 0,
-                        "name": "Hello world"
-                    }
-                ],
-                "reviews": 5,
-                "rating": 4.6
-            }
-        ]
+        if request.user.is_authenticated:
+            cart = Cart.objects.get_or_create(user=request.user)
+        else:
+            cart = Cart.objects.get_or_create(session_key=request.session.session_key)
+        product_in_cart = cart[0].products.get(product_id=id)
+        product_in_cart.count -= 1
+        if product_in_cart.count == 0:
+            cart[0].products.get(product_id=id).delete()
+        else:
+            product_in_cart.save()
+        data = cart[0].serialize()
         return JsonResponse(data, safe=False)
 
 
-def orders(request):
-    if (request.method == "POST"):
-        data = [
-            {
-                "id": 123,
-                "category": 55,
-                "price": 500.67,
-                "count": 12,
-                "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-                "title": "video card",
-                "description": "description of the product",
-                "freeDelivery": True,
-                "images": [
-                    {
-                        "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                        "alt": "hello alt",
-                    }
-                ],
-                "tags": [
-                    {
-                        "id": 0,
-                        "name": "Hello world"
-                    }
-                ],
-                "reviews": 5,
-                "rating": 4.6
-            }
-        ]
-        return JsonResponse(data, safe=False)
+# def orders(request):
+#     if (request.method == "POST"):
+#         data = [
+#             {
+#                 "id": 123,
+#                 "category": 55,
+#                 "price": 500.67,
+#                 "count": 12,
+#                 "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
+#                 "title": "video card",
+#                 "description": "description of the product",
+#                 "freeDelivery": True,
+#                 "images": [
+#                     {
+#                         "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
+#                         "alt": "hello alt",
+#                     }
+#                 ],
+#                 "tags": [
+#                     {
+#                         "id": 0,
+#                         "name": "Hello world"
+#                     }
+#                 ],
+#                 "reviews": 5,
+#                 "rating": 4.6
+#             }
+#         ]
+#         return JsonResponse(data, safe=False)
 
 
 def signIn(request):
@@ -393,22 +289,19 @@ def tags(request):
 
 
 def productReviews(request, id):
-    data = [
-        {
-            "author": "Annoying Orange",
-            "email": "no-reply@mail.ru",
-            "text": "rewrewrwerewrwerwerewrwerwer",
-            "rate": 4,
-            "date": "2023-05-05 12:12"
-        },
-        {
-            "author": "2Annoying Orange",
-            "email": "no-reply@mail.ru",
-            "text": "rewrewrwerewrwerwerewrwerwer",
-            "rate": 5,
-            "date": "2023-05-05 12:12"
-        },
-    ]
+    if request.method == "POST":
+        body = json.loads(request.body)
+        print(body)
+        Review.objects.create(
+            author=body["author"],
+            email=body["email"],
+            text=body["text"],
+            rate=int(body["rate"]),
+            product_id=id,
+            user_id=request.user.id
+        )
+    data = list(Review.objects.filter(product_id=id).values())
+
     return JsonResponse(data, safe=False)
 
 
@@ -420,7 +313,7 @@ def profile(request):
             "email": user.profile.email,
             "phone": user.profile.phone,
             "avatar": {
-                "src": str(user.profile.avatar),
+                "src": user.profile.avatar.url,
                 "alt": "no image yet",
             }
         }
@@ -452,91 +345,106 @@ def profilePassword(request):
 
 def orders(request):
     if (request.method == 'GET'):
-        data = [
-            {
-                "id": 123,
-                "createdAt": "2023-05-05 12:12",
-                "fullName": "Annoying Orange",
-                "email": "no-reply@mail.ru",
-                "phone": "88002000600",
-                "deliveryType": "free",
-                "paymentType": "online",
-                "totalCost": 567.8,
-                "status": "accepted",
-                "city": "Moscow",
-                "address": "red square 1",
-                "products": [
-                    {
-                        "id": 123,
-                        "category": 55,
-                        "price": 500.67,
-                        "count": 12,
-                        "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-                        "title": "video card",
-                        "description": "description of the product",
-                        "freeDelivery": True,
-                        "images": [
-                            {
-                                "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                                "alt": "Image alt string"
-                            }
-                        ],
-                        "tags": [
-                            {
-                                "id": 12,
-                                "name": "Gaming"
-                            }
-                        ],
-                        "reviews": 5,
-                        "rating": 4.6
-                    }
-                ]
-            },
-            {
-                "id": 123,
-                "createdAt": "2023-05-05 12:12",
-                "fullName": "Annoying Orange",
-                "email": "no-reply@mail.ru",
-                "phone": "88002000600",
-                "deliveryType": "free",
-                "paymentType": "online",
-                "totalCost": 567.8,
-                "status": "accepted",
-                "city": "Moscow",
-                "address": "red square 1",
-                "products": [
-                    {
-                        "id": 123,
-                        "category": 55,
-                        "price": 500.67,
-                        "count": 12,
-                        "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-                        "title": "video card",
-                        "description": "description of the product",
-                        "freeDelivery": True,
-                        "images": [
-                            {
-                                "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                                "alt": "Image alt string"
-                            }
-                        ],
-                        "tags": [
-                            {
-                                "id": 12,
-                                "name": "Gaming"
-                            }
-                        ],
-                        "reviews": 5,
-                        "rating": 4.6
-                    }
-                ]
-            }
-        ]
+        data = [my_order.serialize(request) for my_order in list(Order.objects.filter(user=request.user))]
+        # data = [
+        #     {
+        #         "id": 123,
+        #         "createdAt": "2023-05-05 12:12",
+        #         "fullName": "Annoying Orange",
+        #         "email": "no-reply@mail.ru",
+        #         "phone": "88002000600",
+        #         "deliveryType": "free",
+        #         "paymentType": "online",
+        #         "totalCost": 567.8,
+        #         "status": "accepted",
+        #         "city": "Moscow",
+        #         "address": "red square 1",
+        #         "products": [
+        #             {
+        #                 "id": 123,
+        #                 "category": 55,
+        #                 "price": 500.67,
+        #                 "count": 12,
+        #                 "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
+        #                 "title": "video card",
+        #                 "description": "description of the product",
+        #                 "freeDelivery": True,
+        #                 "images": [
+        #                     {
+        #                         "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
+        #                         "alt": "Image alt string"
+        #                     }
+        #                 ],
+        #                 "tags": [
+        #                     {
+        #                         "id": 12,
+        #                         "name": "Gaming"
+        #                     }
+        #                 ],
+        #                 "reviews": 5,
+        #                 "rating": 4.6
+        #             }
+        #         ]
+        #     },
+        #     {
+        #         "id": 123,
+        #         "createdAt": "2023-05-05 12:12",
+        #         "fullName": "Annoying Orange",
+        #         "email": "no-reply@mail.ru",
+        #         "phone": "88002000600",
+        #         "deliveryType": "free",
+        #         "paymentType": "online",
+        #         "totalCost": 5555.8,
+        #         "status": "accepted",
+        #         "city": "Moscow",
+        #         "address": "red square 1",
+        #         "products": [
+        #             {
+        #                 "id": 123,
+        #                 "category": 55,
+        #                 "price": 500.67,
+        #                 "count": 12,
+        #                 "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
+        #                 "title": "video card",
+        #                 "description": "description of the product",
+        #                 "freeDelivery": True,
+        #                 "images": [
+        #                     {
+        #                         "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
+        #                         "alt": "Image alt string"
+        #                     }
+        #                 ],
+        #                 "tags": [
+        #                     {
+        #                         "id": 12,
+        #                         "name": "Gaming"
+        #                     }
+        #                 ],
+        #                 "reviews": 5,
+        #                 "rating": 4.6
+        #             }
+        #         ]
+        #     }
+        # ]
         return JsonResponse(data, safe=False)
 
     elif (request.method == 'POST'):
+        print("order sent")
+        current_cart = Cart.objects.get(ordered=False, user=request.user).serialize()
+
+        new_order = Order.objects.create(
+            user=request.user,
+            name=request.user.username,
+            delivery_type="free",
+            payment_type="online",
+            total_cost=sum(cur_product["price"] for cur_product in current_cart),
+            status="in progress",
+            city="temp",
+            address="temp",
+            products=current_cart,
+        )
         data = {
-            "orderId": 123,
+            "orderId": new_order.pk,
         }
         return JsonResponse(data)
 
@@ -544,62 +452,89 @@ def orders(request):
 
 
 def order(request, id):
-    if (request.method == 'GET'):
-        data = {
-            "id": 123,
-            "createdAt": "2023-05-05 12:12",
-            "fullName": "Annoying Orange",
-            "email": "no-reply@mail.ru",
-            "phone": "88002000600",
-            "deliveryType": "free",
-            "paymentType": "online",
-            "totalCost": 567.8,
-            "status": "accepted",
-            "city": "Moscow",
-            "address": "red square 1",
-            "products": [
-                {
-                    "id": 123,
-                    "category": 55,
-                    "price": 500.67,
-                    "count": 12,
-                    "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
-                    "title": "video card",
-                    "description": "description of the product",
-                    "freeDelivery": True,
-                    "images": [
-                        {
-                            "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
-                            "alt": "Image alt string"
-                        }
-                    ],
-                    "tags": [
-                        {
-                            "id": 12,
-                            "name": "Gaming"
-                        }
-                    ],
-                    "reviews": 5,
-                    "rating": 4.6
-                },
-            ]
-        }
+    current_order = Order.objects.get(pk=id)
+    if request.method == 'GET':
+        data = current_order.serialize(request)
+        # data = {
+        #     "id": 123,
+        #     "createdAt": "2023-05-05 12:12",
+        #     "fullName": "Annoying Orange",
+        #     "email": "no-reply@mail.ru",
+        #     "phone": "88002000600",
+        #     "deliveryType": "free",
+        #     "paymentType": "online",
+        #     "totalCost": 567.8,
+        #     "status": "accepted",
+        #     "city": "Moscow",
+        #     "address": "red square 1",
+        #     "products": [
+        #         {
+        #             "id": 123,
+        #             "category": 55,
+        #             "price": 500.67,
+        #             "count": 12,
+        #             "date": "Thu Feb 09 2023 21:39:52 GMT+0100 (Central European Standard Time)",
+        #             "title": "video card",
+        #             "description": "description of the product",
+        #             "freeDelivery": True,
+        #             "images": [
+        #                 {
+        #                     "src": "https://proprikol.ru/wp-content/uploads/2020/12/kartinki-ryabchiki-14.jpg",
+        #                     "alt": "Image alt string"
+        #                 }
+        #             ],
+        #             "tags": [
+        #                 {
+        #                     "id": 12,
+        #                     "name": "Gaming"
+        #                 }
+        #             ],
+        #             "reviews": 5,
+        #             "rating": 4.6
+        #         },
+        #     ]
+        # }
         return JsonResponse(data)
 
-    elif (request.method == 'POST'):
-        data = {"orderId": 123}
+    elif request.method == 'POST':
+        body = json.loads(request.body)
+        current_order.name = body["fullName"]
+        current_order.email = body["email"]
+        current_order.phone = body["phone"]
+        current_order.delivery_type = body["deliveryType"]
+        current_order.city = body["city"]
+        current_order.address = body["address"]
+        current_order.payment_type = body["paymentType"]
+        current_order.save()
+        data = {"orderId": id}
         return JsonResponse(data)
 
     return HttpResponse(status=500)
 
 
 def payment(request, id):
-    print('qweqwewqeqwe', id)
+    if request.method == "POST":
+        body = json.loads(request.body)
+        current_order = Order.objects.get(pk=id)
+        current_order.payment_info = {
+            "name": body["name"],
+            "card_number": body["number"],
+            "exp_year": body["year"],
+            "exp_month": body["month"],
+            "cvc": body["code"],
+        }
+        current_order.save()
+        if current_order.payment_info:
+            current_order.status = "paid"
+            current_order.save()
+            Cart.objects.get(user=request.user).products.clear()
     return HttpResponse(status=200)
 
 
 def avatar(request):
     if request.method == "POST":
-        # 		print(request.FILES["avatar"])
+        current_user = request.user
+        current_user.profile.avatar = request.FILES["avatar"]
+        current_user.profile.save()
         return HttpResponse(status=200)
 
