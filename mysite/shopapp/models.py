@@ -19,6 +19,17 @@ class Category(models.Model):
     def __str__(self):
         return self.title
 
+    def serialize(self):
+        return {
+            "id": self.pk,
+            "title": self.title,
+            "image": {
+                "src": self.image.url,
+                "alt": "Image alt string"
+            },
+            "subcategories": []
+        }
+
 
 def product_image_directory_path(instance: "Product", filename: str) -> str:
     return "products/product_{pk}/{filename}".format(pk=instance.pk, filename=filename)
@@ -100,7 +111,7 @@ class CartItem(models.Model):
 
 class Cart(models.Model):
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
-    products = models.ManyToManyField(CartItem, blank=True, null=True)
+    products = models.ManyToManyField(CartItem, blank=True)
     ordered = models.BooleanField(default=False)
     session_key = models.CharField(max_length=40, null=True)
 
@@ -111,7 +122,7 @@ class Cart(models.Model):
             product = Product.objects.get(pk=cart.product_id)
             json_data = product.serialize()
             json_data["count"] = cart.count
-            json_data["price"] = cart.count * product.price
+            json_data["price"] = product.price
             data.append(json_data)
 
         return data
@@ -146,8 +157,8 @@ class Order(models.Model):
             "totalCost": self.total_cost,
             "status": self.status,
             "city": self.city,
-            "address":self.address,
-            "products":self.products
+            "address": self.address,
+            "products": self.products
         }
 
         return data

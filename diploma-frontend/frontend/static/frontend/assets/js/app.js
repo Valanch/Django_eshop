@@ -95,7 +95,7 @@ createApp({
 		// },
 		addToBasket(item, count = 1) {
 			const { id } = item
-			this.postData('/api/basket/', { id, count })
+			this.postData('/api/basket', { id, count })
 				.then(({ data }) => {
 					this.basket = data
 				})
