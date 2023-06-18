@@ -5,7 +5,9 @@ from django.db.models import Avg
 
 
 def category_image_directory_path(instance: "Category", filename: str) -> str:
-    return "categories/category_{pk}/{filename}".format(pk=instance.pk, filename=filename)
+    return "categories/category_{pk}/{filename}".format(
+        pk=instance.pk, filename=filename
+    )
 
 
 class Category(models.Model):
@@ -14,7 +16,9 @@ class Category(models.Model):
 
     title = models.CharField(max_length=128)
     active = models.BooleanField(default=False)
-    image = models.ImageField(null=True, blank=True, upload_to=category_image_directory_path)
+    image = models.ImageField(
+        null=True, blank=True, upload_to=category_image_directory_path
+    )
 
     def __str__(self):
         return self.title
@@ -23,11 +27,8 @@ class Category(models.Model):
         return {
             "id": self.pk,
             "title": self.title,
-            "image": {
-                "src": self.image.url,
-                "alt": "Image alt string"
-            },
-            "subcategories": []
+            "image": {"src": self.image.url, "alt": "Image alt string"},
+            "subcategories": [],
         }
 
 
@@ -38,7 +39,9 @@ def product_image_directory_path(instance: "Product", filename: str) -> str:
 class Product(models.Model):
     name = models.CharField(max_length=256)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, null=True)
-    image = models.ImageField(null=True, blank=True, upload_to=product_image_directory_path)
+    image = models.ImageField(
+        null=True, blank=True, upload_to=product_image_directory_path
+    )
     description = models.TextField(default="")
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     stock = models.IntegerField(default=0)
@@ -51,7 +54,7 @@ class Product(models.Model):
         return reviews_list
 
     def get_rating(self):
-        avg_rating = Review.objects.filter(product_id=self.pk).aggregate(Avg('rate'))
+        avg_rating = Review.objects.filter(product_id=self.pk).aggregate(Avg("rate"))
         return avg_rating["rate__avg"]
 
     def serialize(self):
@@ -158,7 +161,7 @@ class Order(models.Model):
             "status": self.status,
             "city": self.city,
             "address": self.address,
-            "products": self.products
+            "products": self.products,
         }
 
         return data

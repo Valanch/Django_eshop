@@ -5,20 +5,27 @@ import shopapp.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('shopapp', '0003_rename_name_category_title_category_image'),
+        ("shopapp", "0003_rename_name_category_title_category_image"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='category',
-            name='image',
-            field=models.ImageField(blank=True, null=True, upload_to=shopapp.models.category_image_directory_path),
+            model_name="category",
+            name="image",
+            field=models.ImageField(
+                blank=True,
+                null=True,
+                upload_to=shopapp.models.category_image_directory_path,
+            ),
         ),
         migrations.AlterField(
-            model_name='product',
-            name='image',
-            field=models.ImageField(blank=True, null=True, upload_to=shopapp.models.product_image_directory_path),
+            model_name="product",
+            name="image",
+            field=models.ImageField(
+                blank=True,
+                null=True,
+                upload_to=shopapp.models.product_image_directory_path,
+            ),
         ),
     ]

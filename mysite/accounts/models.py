@@ -17,6 +17,8 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     name = models.CharField(max_length=256)
     role = models.ForeignKey(Role, on_delete=models.CASCADE, null=True)
-    avatar = models.ImageField(null=True, blank=True, upload_to=avatar_image_directory_path)
+    avatar = models.ImageField(
+        null=True, blank=True, upload_to=avatar_image_directory_path
+    )
     email = models.EmailField(null=True, blank=True)
     phone = models.IntegerField(null=True, blank=True)

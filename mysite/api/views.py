@@ -37,9 +37,15 @@ def catalog(request):
         all_products = all_products.filter(category=request.GET.get("category"))
     if request.GET.get("filter[minPrice]"):
         all_products = all_products.filter(
-            price__range=(request.GET.get("filter[minPrice]"), request.GET.get("filter[maxPrice]")))
+            price__range=(
+                request.GET.get("filter[minPrice]"),
+                request.GET.get("filter[maxPrice]"),
+            )
+        )
     if request.GET.get("filter[name]"):
-        all_products = all_products.filter(name__contains=request.GET.get("filter[name]"))
+        all_products = all_products.filter(
+            name__contains=request.GET.get("filter[name]")
+        )
     if request.GET.get("sort"):
         all_products = all_products.order_by(request.GET.get("sort"))
     if request.GET.get("sortType") == "dec":
@@ -51,7 +57,7 @@ def catalog(request):
     data = {
         "items": pages.page(current_page).object_list,
         "currentPage": current_page,
-        "lastPage": pages.num_pages
+        "lastPage": pages.num_pages,
     }
 
     return JsonResponse(data)
@@ -73,11 +79,9 @@ def productsLimited(request):
 
 def sales(request):
     data = {
-        'items': [
-            Product.objects.get(pk=2).serialize()
-        ],
-        'currentPage': 1,
-        'lastPage': 1,
+        "items": [Product.objects.get(pk=2).serialize()],
+        "currentPage": 1,
+        "lastPage": 1,
     }
 
     return JsonResponse(data)
@@ -85,7 +89,7 @@ def sales(request):
 
 def basket(request):
     if request.method == "GET":
-        print('[GET] /api/basket/')
+        print("[GET] /api/basket/")
         if request.user.is_authenticated:
             cart = Cart.objects.get_or_create(user=request.user)
         else:
@@ -94,10 +98,10 @@ def basket(request):
 
         return JsonResponse(data, safe=False)
 
-    elif (request.method == "POST"):
+    elif request.method == "POST":
         body = json.loads(request.body)
-        id = body['id']
-        count = body['count']
+        id = body["id"]
+        count = body["count"]
         if request.user.is_authenticated:
             cart = Cart.objects.get_or_create(user=request.user)
             if cart[0].products.filter(product_id=id).exists():
@@ -105,7 +109,11 @@ def basket(request):
                 product_in_cart.count += int(count)
                 product_in_cart.save()
             else:
-                cart[0].products.add(CartItem.objects.create(user=request.user, product_id=id, count=count))
+                cart[0].products.add(
+                    CartItem.objects.create(
+                        user=request.user, product_id=id, count=count
+                    )
+                )
             data = cart[0].serialize()
         else:
             cart = Cart.objects.get_or_create(session_key=request.session.session_key)
@@ -114,17 +122,23 @@ def basket(request):
                 product_in_cart.count += int(count)
                 product_in_cart.save()
             else:
-                cart[0].products.add(CartItem.objects.create(user=None, product_id=id, count=count))
+                cart[0].products.add(
+                    CartItem.objects.create(user=None, product_id=id, count=count)
+                )
             data = cart[0].serialize()
 
-        print('[POST] /api/basket/   |   id: {id}, count: {count}'.format(id=id, count=count))
+        print(
+            "[POST] /api/basket/   |   id: {id}, count: {count}".format(
+                id=id, count=count
+            )
+        )
 
         return JsonResponse(data, safe=False)
 
-    elif (request.method == "DELETE"):
+    elif request.method == "DELETE":
         body = json.loads(request.body)
-        id = body['id']
-        print('[DELETE] /api/basket/')
+        id = body["id"]
+        print("[DELETE] /api/basket/")
         if request.user.is_authenticated:
             cart = Cart.objects.get_or_create(user=request.user)
         else:
@@ -140,13 +154,11 @@ def basket(request):
         return JsonResponse(data, safe=False)
 
 
-
-
 def signIn(request):
     if request.method == "POST":
         body = json.loads(request.body)
-        username = body['username']
-        password = body['password']
+        username = body["username"]
+        password = body["password"]
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
@@ -160,10 +172,15 @@ def signUp(request):
         temp_cart = Cart.objects.get(session_key=request.session.session_key)
         body = json.loads(request.body)
         name = body["name"]
-        username = body['username']
-        password = body['password']
-        User.objects.create_user(username=username, password=password, is_superuser=False, is_staff=False,
-                                 is_active=True)
+        username = body["username"]
+        password = body["password"]
+        User.objects.create_user(
+            username=username,
+            password=password,
+            is_superuser=False,
+            is_staff=False,
+            is_active=True,
+        )
         user = authenticate(request, username=username, password=password)
         login(request=request, user=user)
         Profile.objects.create(user=user, name=name)
@@ -189,9 +206,9 @@ def product(request, id):
 
 def tags(request):
     data = [
-        {"id": 0, "name": 'tag0'},
-        {"id": 1, "name": 'tag1'},
-        {"id": 2, "name": 'tag2'},
+        {"id": 0, "name": "tag0"},
+        {"id": 1, "name": "tag1"},
+        {"id": 2, "name": "tag2"},
     ]
 
     return JsonResponse(data, safe=False)
@@ -207,7 +224,7 @@ def productReviews(request, id):
             text=body["text"],
             rate=int(body["rate"]),
             product_id=id,
-            user_id=request.user.id
+            user_id=request.user.id,
         )
     data = list(Review.objects.filter(product_id=id).values())
 
@@ -216,7 +233,7 @@ def productReviews(request, id):
 
 def profile(request):
     user = request.user
-    if (request.method == 'GET'):
+    if request.method == "GET":
         data = {
             "fullName": user.profile.name,
             "email": user.profile.email,
@@ -224,11 +241,11 @@ def profile(request):
             "avatar": {
                 "src": user.profile.avatar.url,
                 "alt": "no image yet",
-            }
+            },
         }
         return JsonResponse(data)
 
-    elif (request.method == 'POST'):
+    elif request.method == "POST":
         body = json.loads(request.body)
         data = {
             "fullName": body["fullName"],
@@ -237,7 +254,7 @@ def profile(request):
             "avatar": {
                 "src": body["avatar"],
                 "alt": "hello alt",
-            }
+            },
         }
         user.profile.name = data["fullName"]
         user.profile.email = data["email"]
@@ -253,11 +270,14 @@ def profilePassword(request):
 
 
 def orders(request):
-    if (request.method == 'GET'):
-        data = [my_order.serialize(request) for my_order in list(Order.objects.filter(user=request.user))]
+    if request.method == "GET":
+        data = [
+            my_order.serialize(request)
+            for my_order in list(Order.objects.filter(user=request.user))
+        ]
         return JsonResponse(data, safe=False)
 
-    elif (request.method == 'POST'):
+    elif request.method == "POST":
         print("order sent")
         current_cart = Cart.objects.get(ordered=False, user=request.user).serialize()
 
@@ -282,11 +302,11 @@ def orders(request):
 
 def order(request, id):
     current_order = Order.objects.get(pk=id)
-    if request.method == 'GET':
+    if request.method == "GET":
         data = current_order.serialize(request)
         return JsonResponse(data)
 
-    elif request.method == 'POST':
+    elif request.method == "POST":
         body = json.loads(request.body)
         current_order.name = body["fullName"]
         current_order.email = body["email"]
